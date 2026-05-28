@@ -1,0 +1,1658 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinkedIn CMS · Italo Amaya</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // ─── REEMPLAZA CON TUS CREDENCIALES DE FIREBASE ───
+  const firebaseConfig = {
+    apiKey: "AIzaSyCMwYCYN6v_T6ALu9OlVoRkwhTmgtiRVWE",
+    authDomain: "linkedin-cms-italo.firebaseapp.com",
+    projectId: "linkedin-cms-italo",
+    storageBucket: "linkedin-cms-italo.firebasestorage.app",
+    messagingSenderId: "451403029110",
+    appId: "1:451403029110:web:d9f5f734b55870ceab9d57"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  window._db = db;
+  window._firebase = { collection, addDoc, getDocs, updateDoc, doc, query, orderBy, onSnapshot };
+  window.dispatchEvent(new Event('firebase-ready'));
+</script>
+
+<style>
+:root {
+  --bg: #080810;
+  --bg2: #0D0D18;
+  --bg3: #111120;
+  --border: rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.1);
+  --text: #ffffff;
+  --text2: rgba(255,255,255,0.5);
+  --text3: rgba(255,255,255,0.25);
+  --text4: rgba(255,255,255,0.12);
+  --accent: #0A66C2;
+  --accent2: rgba(10,102,194,0.15);
+  --accent3: rgba(10,102,194,0.08);
+  --green: #1D9E75;
+  --green2: rgba(29,158,117,0.12);
+  --orange: #EF9F27;
+  --orange2: rgba(239,159,39,0.1);
+  --red: #D85A30;
+  --pmo: #60a5fa; --pmo2: rgba(96,165,250,0.1);
+  --saas: #34d399; --saas2: rgba(52,211,153,0.1);
+  --brand: #a78bfa; --brand2: rgba(167,139,250,0.1);
+  --empre: #fbbf24; --empre2: rgba(251,191,36,0.1);
+  --radius: 8px;
+  --radius2: 12px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh; overflow-x: hidden;
+}
+
+/* ════ SCROLLBAR ════ */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+
+/* ════ HEADER ════ */
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 28px;
+  border-bottom: 0.5px solid var(--border);
+  background: rgba(8,8,16,0.95);
+  backdrop-filter: blur(20px);
+  position: sticky; top: 0; z-index: 100;
+}
+.brand { display: flex; align-items: center; gap: 11px; }
+.brand-icon {
+  width: 28px; height: 28px; background: var(--accent); border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Space Mono', monospace; font-size: 10px; font-weight: 700;
+  color: #fff; letter-spacing: -1px; flex-shrink: 0;
+}
+.brand-name {
+  font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 600;
+  color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase;
+}
+.header-center { display: flex; gap: 0; }
+.h-tab {
+  font-size: 12px; padding: 6px 16px; color: var(--text3);
+  border-bottom: 1.5px solid transparent; cursor: pointer;
+  white-space: nowrap; transition: color 0.15s; letter-spacing: 0.02em;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.h-tab:hover { color: var(--text2); }
+.h-tab.active { color: var(--text); border-bottom-color: var(--accent); }
+.header-right { display: flex; align-items: center; gap: 12px; }
+.h-pill {
+  font-size: 10px; padding: 3px 10px; border-radius: 100px; font-weight: 500;
+  white-space: nowrap;
+}
+.h-pill-ok { background: var(--green2); color: var(--green); border: 0.5px solid rgba(29,158,117,0.2); }
+.h-pill-pend { background: var(--orange2); color: var(--orange); border: 0.5px solid rgba(239,159,39,0.2); }
+.h-date { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--text4); letter-spacing: 0.1em; }
+
+/* ════ SCREENS ════ */
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* ════ SCREEN 1 — APROBACIÓN ════ */
+.s1-layout { display: grid; grid-template-columns: 1fr 300px; min-height: calc(100vh - 49px); }
+.s1-main { border-right: 0.5px solid var(--border); overflow: hidden; }
+
+/* Greeting */
+.greeting {
+  padding: 28px 28px 22px;
+  border-bottom: 0.5px solid var(--border);
+  position: relative; overflow: hidden;
+}
+.greeting-glow {
+  position: absolute; width: 350px; height: 200px;
+  background: radial-gradient(ellipse, rgba(10,102,194,0.08) 0%, transparent 70%);
+  top: -80px; right: -40px; pointer-events: none;
+}
+.g-eye {
+  font-family: 'Space Mono', monospace; font-size: 9px; color: var(--accent);
+  letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 8px;
+}
+.g-eye::before { content: ''; display: inline-block; width: 14px; height: 0.5px; background: var(--accent); }
+.g-title {
+  font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700;
+  line-height: 1.3; margin-bottom: 6px; letter-spacing: -0.01em;
+}
+.g-title span { color: var(--text3); font-weight: 400; }
+.g-sub { font-size: 12px; color: var(--text3); line-height: 1.6; max-width: 480px; }
+.g-sub strong { color: var(--text2); font-weight: 500; }
+.g-stats { display: flex; gap: 0; margin-top: 18px; }
+.g-stat { padding: 0 20px; }
+.g-stat:first-child { padding-left: 0; }
+.g-stat + .g-stat { border-left: 0.5px solid var(--border); }
+.g-val { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; line-height: 1; }
+.g-lbl { font-size: 10px; color: var(--text4); margin-top: 2px; letter-spacing: 0.03em; }
+
+/* Posts list */
+.posts-wrap { padding: 22px 28px; }
+.posts-label {
+  font-family: 'Space Mono', monospace; font-size: 9px; color: var(--text4);
+  letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 18px;
+}
+
+.post-row {
+  border-bottom: 0.5px solid var(--border);
+  padding: 18px 0;
+  display: grid; grid-template-columns: 60px 1fr auto;
+  gap: 16px; align-items: start; cursor: pointer;
+  transition: opacity 0.15s;
+}
+.post-row:first-of-type { padding-top: 0; }
+.post-row:hover { opacity: 0.7; }
+.post-row.active-row { opacity: 1 !important; }
+
+.pr-date {
+  font-family: 'Space Mono', monospace; font-size: 9px;
+  color: var(--text4); letter-spacing: 0.06em; line-height: 1.8;
+}
+.pr-date strong {
+  display: block; font-family: 'Syne', sans-serif;
+  font-size: 22px; font-weight: 800;
+  color: rgba(255,255,255,0.08); line-height: 1;
+  margin-bottom: 2px; letter-spacing: -0.02em;
+  transition: color 0.2s;
+}
+.post-row.active-row .pr-date strong { color: var(--text); }
+
+.pr-body {}
+.pr-top { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; }
+.cat-pill {
+  font-size: 9px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; padding: 2px 7px; border-radius: 4px;
+}
+.cp-pmo { background: var(--pmo2); color: var(--pmo); }
+.cp-saas { background: var(--saas2); color: var(--saas); }
+.cp-brand { background: var(--brand2); color: var(--brand); }
+.cp-empre { background: var(--empre2); color: var(--empre); }
+
+.pr-preview {
+  font-size: 12px; color: var(--text3); line-height: 1.55;
+  display: -webkit-box; -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 6px;
+}
+.pr-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+.pr-tag { font-size: 9px; color: rgba(10,102,194,0.6); }
+
+.pr-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; padding-top: 2px; }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.sd-pend { background: var(--orange); }
+.sd-ok { background: var(--green); }
+.pr-thumb { width: 32px; height: 32px; border-radius: 5px; object-fit: cover; border: 0.5px solid rgba(10,102,194,0.3); }
+.pr-chev { font-size: 12px; color: var(--text4); margin-top: auto; }
+
+/* Detail panel */
+.detail-panel {
+  width: 0; overflow: hidden; border-left: 0.5px solid var(--border);
+  background: var(--bg2); transition: width 0.28s cubic-bezier(0.4,0,0.2,1);
+  flex-shrink: 0;
+}
+.detail-panel.open { width: 380px; }
+.dp-inner { width: 380px; height: calc(100vh - 49px); overflow-y: auto; position: sticky; top: 49px; }
+
+.dp-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; border-bottom: 0.5px solid var(--border);
+  position: sticky; top: 0; background: var(--bg2); z-index: 10;
+}
+.dp-header-left {}
+.dp-week { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--text4); letter-spacing: 0.12em; margin-bottom: 2px; }
+.dp-day { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; }
+.dp-close {
+  width: 26px; height: 26px; border-radius: 6px;
+  background: var(--bg3); border: 0.5px solid var(--border);
+  color: var(--text3); cursor: pointer; font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.dp-close:hover { background: var(--border); color: var(--text); }
+
+.dp-body { padding: 20px; display: flex; flex-direction: column; gap: 18px; }
+.dp-label {
+  font-family: 'Space Mono', monospace; font-size: 9px; color: var(--text4);
+  letter-spacing: 0.16em; text-transform: uppercase; margin-bottom: 8px;
+}
+
+/* Cat selector */
+.cat-sel { display: flex; gap: 5px; flex-wrap: wrap; }
+.cat-opt {
+  font-size: 11px; padding: 4px 11px; border-radius: 6px;
+  cursor: pointer; border: 0.5px solid var(--border);
+  background: var(--bg3); color: var(--text3);
+  font-family: 'DM Sans', sans-serif; transition: all 0.15s;
+}
+.cat-opt.sel-pmo { background: var(--pmo2); border-color: rgba(96,165,250,0.3); color: var(--pmo); }
+.cat-opt.sel-saas { background: var(--saas2); border-color: rgba(52,211,153,0.3); color: var(--saas); }
+.cat-opt.sel-brand { background: var(--brand2); border-color: rgba(167,139,250,0.3); color: var(--brand); }
+.cat-opt.sel-empre { background: var(--empre2); border-color: rgba(251,191,36,0.3); color: var(--empre); }
+
+/* Text area */
+.dp-textarea {
+  width: 100%; background: var(--bg3); border: 0.5px solid var(--border);
+  border-radius: var(--radius); color: var(--text2);
+  font-family: 'DM Sans', sans-serif; font-size: 12px;
+  padding: 12px; outline: none; resize: none; min-height: 200px;
+  line-height: 1.7; transition: border-color 0.15s;
+}
+.dp-textarea:focus { border-color: rgba(10,102,194,0.4); }
+
+/* Hashtags */
+.tags-wrap {
+  display: flex; flex-wrap: wrap; gap: 5px; align-items: center;
+  padding: 10px; background: var(--bg3); border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+}
+.tag-chip {
+  font-size: 10px; color: var(--accent); background: var(--accent2);
+  padding: 2px 8px; border-radius: 4px;
+  display: flex; align-items: center; gap: 4px;
+}
+.tag-x { color: rgba(10,102,194,0.4); cursor: pointer; font-size: 12px; line-height: 1; }
+.tag-x:hover { color: var(--pmo); }
+.tag-add {
+  font-size: 10px; color: var(--text4); cursor: pointer;
+  padding: 2px 8px; border: 0.5px dashed var(--border2);
+  border-radius: 4px; transition: all 0.15s;
+}
+.tag-add:hover { border-color: rgba(10,102,194,0.4); color: var(--pmo); }
+
+/* DateTime */
+.dt-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.dt-f { display: flex; flex-direction: column; gap: 4px; }
+.dt-lbl { font-size: 10px; color: var(--text3); }
+.dt-input {
+  background: var(--bg3); border: 0.5px solid var(--border);
+  border-radius: var(--radius); color: var(--text2);
+  font-family: 'DM Sans', sans-serif; font-size: 12px;
+  padding: 7px 10px; outline: none; width: 100%;
+  transition: border-color 0.15s;
+}
+.dt-input:focus { border-color: rgba(10,102,194,0.4); }
+
+/* Image upload */
+.img-drop {
+  border: 0.5px dashed var(--border2); border-radius: var(--radius2);
+  padding: 14px; display: flex; align-items: center; gap: 12px;
+  cursor: pointer; transition: all 0.2s; background: var(--bg3);
+  position: relative;
+}
+.img-drop:hover { border-color: rgba(10,102,194,0.4); background: var(--accent3); }
+.img-drop input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.id-icon {
+  width: 36px; height: 36px; background: var(--bg);
+  border-radius: 7px; display: flex; align-items: center;
+  justify-content: center; flex-shrink: 0;
+}
+.id-icon svg { width: 16px; height: 16px; stroke: var(--text4); fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.id-main { font-size: 11px; color: var(--text3); margin-bottom: 2px; }
+.id-main span { color: var(--pmo); }
+.id-sub { font-size: 9px; color: var(--text4); }
+
+.img-preview { border-radius: var(--radius2); overflow: hidden; border: 0.5px solid rgba(10,102,194,0.2); display: none; }
+.img-preview img { width: 100%; height: 140px; object-fit: cover; display: block; }
+.img-preview-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; background: var(--bg2);
+}
+.ipb-name { font-size: 10px; color: var(--text3); }
+.ipb-btns { display: flex; gap: 5px; }
+.ipb-btn {
+  font-size: 10px; padding: 3px 9px; border-radius: 5px;
+  cursor: pointer; border: 0.5px solid var(--border2);
+  background: var(--bg3); color: var(--text3);
+  font-family: 'DM Sans', sans-serif; transition: all 0.15s;
+}
+.ipb-btn.del { color: rgba(216,90,48,0.6); border-color: rgba(216,90,48,0.15); }
+
+/* Copy tip */
+.copy-tip {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; background: var(--accent3);
+  border: 0.5px solid rgba(10,102,194,0.15); border-radius: var(--radius);
+}
+.ct-text { font-size: 11px; color: var(--text3); line-height: 1.5; flex: 1; }
+.ct-text strong { color: var(--text2); font-weight: 500; }
+.btn-copy {
+  font-size: 10px; padding: 5px 12px;
+  background: var(--accent2); border: 0.5px solid rgba(10,102,194,0.3);
+  border-radius: 6px; color: var(--pmo); cursor: pointer;
+  font-family: 'DM Sans', sans-serif; white-space: nowrap;
+  transition: all 0.15s; flex-shrink: 0;
+}
+.btn-copy:hover { background: rgba(10,102,194,0.25); }
+.btn-copy.copied { background: var(--green2); border-color: rgba(29,158,117,0.3); color: var(--green); }
+
+/* Panel actions */
+.dp-actions { display: flex; flex-direction: column; gap: 7px; padding-top: 4px; border-top: 0.5px solid var(--border); }
+.btn-approve-full {
+  width: 100%; padding: 11px; background: var(--accent); color: #fff;
+  border: none; border-radius: var(--radius); font-size: 12px; font-weight: 600;
+  font-family: 'Syne', sans-serif; letter-spacing: 0.04em; cursor: pointer;
+  transition: background 0.15s; display: flex; align-items: center; justify-content: center; gap: 7px;
+}
+.btn-approve-full:hover { background: #0958a8; }
+.btn-approve-full.loading { opacity: 0.7; pointer-events: none; }
+.dp-sec { display: flex; gap: 7px; }
+.btn-dp-soft {
+  flex: 1; padding: 8px; background: transparent; color: var(--text3);
+  border: 0.5px solid var(--border); border-radius: var(--radius);
+  cursor: pointer; font-size: 11px; font-family: 'DM Sans', sans-serif;
+  text-align: center; transition: all 0.15s;
+}
+.btn-dp-soft:hover { border-color: var(--border2); color: var(--text2); }
+.btn-dp-reject {
+  flex: 1; padding: 8px; background: transparent;
+  color: rgba(216,90,48,0.5); border: 0.5px solid rgba(216,90,48,0.12);
+  border-radius: var(--radius); cursor: pointer;
+  font-size: 11px; font-family: 'DM Sans', sans-serif; text-align: center;
+  transition: all 0.15s;
+}
+.btn-dp-reject:hover { color: var(--red); border-color: rgba(216,90,48,0.3); }
+
+/* Sidebar brief */
+.s1-sidebar { padding: 22px 20px; display: flex; flex-direction: column; gap: 22px; overflow-y: auto; }
+.sb-title { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+.sb-sub { font-size: 11px; color: var(--text3); line-height: 1.5; }
+
+.config-block { display: flex; flex-direction: column; gap: 10px; padding-bottom: 18px; border-bottom: 0.5px solid var(--border); }
+.cfg-lbl { font-size: 10px; color: var(--text3); margin-bottom: 4px; display: block; }
+.btn-grp { display: flex; gap: 4px; }
+.bg-b {
+  flex: 1; padding: 6px 0; text-align: center;
+  background: var(--bg3); border: 0.5px solid var(--border);
+  border-radius: 6px; color: var(--text4); font-size: 11px;
+  cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s;
+}
+.bg-b.sel { background: var(--accent2); border-color: rgba(10,102,194,0.4); color: var(--pmo); }
+
+/* Week blocks */
+.week-blocks { display: flex; flex-direction: column; gap: 7px; }
+.wb {
+  border: 0.5px solid var(--border); border-radius: var(--radius2);
+  overflow: hidden; transition: border-color 0.2s;
+}
+.wb.has-content { border-color: rgba(10,102,194,0.3); }
+.wb.disabled { opacity: 0.3; pointer-events: none; }
+.wb-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 13px; cursor: pointer; background: var(--bg3);
+  transition: background 0.15s;
+}
+.wb-head:hover { background: rgba(255,255,255,0.03); }
+.wb-left {}
+.wb-num { font-family: 'Space Mono', monospace; font-size: 8px; color: var(--text4); letter-spacing: 0.12em; margin-bottom: 2px; }
+.wb-range { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 600; }
+.wb-right { display: flex; align-items: center; gap: 7px; }
+.wb-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--text4); transition: all 0.2s; }
+.wb.has-content .wb-dot { background: var(--accent); box-shadow: 0 0 5px rgba(10,102,194,0.6); }
+.wb-chev { font-size: 9px; color: var(--text4); transition: transform 0.2s; }
+.wb.open .wb-chev { transform: rotate(180deg); }
+.wb-body { display: none; padding: 0 13px 13px; flex-direction: column; gap: 8px; }
+.wb.open .wb-body { display: flex; }
+.wbl { font-size: 10px; color: var(--text3); margin-bottom: 3px; display: block; }
+.wb-ta {
+  width: 100%; background: var(--bg); border: 0.5px solid var(--border);
+  border-radius: 6px; color: rgba(255,255,255,0.65);
+  font-family: 'DM Sans', sans-serif; font-size: 11px;
+  padding: 8px 9px; outline: none; resize: none; min-height: 64px;
+  line-height: 1.55; transition: border-color 0.15s;
+}
+.wb-ta:focus { border-color: rgba(10,102,194,0.5); }
+.wb-ta::placeholder { color: var(--text4); }
+.wb-input {
+  width: 100%; background: var(--bg); border: 0.5px solid var(--border);
+  border-radius: 6px; color: rgba(255,255,255,0.65);
+  font-family: 'DM Sans', sans-serif; font-size: 11px;
+  padding: 7px 9px; outline: none; transition: border-color 0.15s;
+}
+.wb-input:focus { border-color: rgba(10,102,194,0.5); }
+.wb-input::placeholder { color: var(--text4); }
+.tone-pills { display: flex; flex-wrap: wrap; gap: 4px; }
+.tone-pill {
+  font-size: 10px; padding: 4px 10px; border-radius: 100px;
+  background: var(--bg); border: 0.5px solid var(--border);
+  color: var(--text4); cursor: pointer; font-family: 'DM Sans', sans-serif;
+  transition: all 0.15s;
+}
+.tone-pill.sel { background: var(--accent2); border-color: rgba(10,102,194,0.4); color: var(--pmo); }
+.wb-divider { height: 0.5px; background: var(--border); }
+
+.brief-btn {
+  width: 100%; padding: 11px; background: var(--accent); color: #fff;
+  border: none; border-radius: var(--radius); font-size: 12px; font-weight: 600;
+  font-family: 'Syne', sans-serif; letter-spacing: 0.04em; cursor: pointer;
+  transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 7px;
+}
+.brief-btn:hover { background: #0958a8; }
+.brief-btn.loading { opacity: 0.6; pointer-events: none; }
+.brief-note { font-size: 10px; color: var(--text4); text-align: center; line-height: 1.5; }
+
+/* Mini cal */
+.mini-cal-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 3px; }
+.mc-h { font-family: 'Space Mono', monospace; font-size: 8px; color: var(--text4); text-align: center; padding-bottom: 4px; }
+.mc-d { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text4); border-radius: 5px; position: relative; }
+.mc-d.has { background: var(--accent2); color: var(--pmo); border: 0.5px solid rgba(10,102,194,0.2); }
+.mc-d.today { background: var(--accent); color: #fff; font-weight: 700; }
+.mc-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--accent); position: absolute; bottom: 2px; }
+
+/* Tag stats */
+.tag-stat { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
+.tag-stat:last-child { margin-bottom: 0; }
+.ts-name { font-size: 10px; color: var(--accent); min-width: 90px; }
+.ts-bw { flex: 1; height: 2px; background: var(--bg3); border-radius: 1px; }
+.ts-b { height: 2px; background: rgba(10,102,194,0.4); border-radius: 1px; }
+.ts-c { font-family: 'Space Mono', monospace; font-size: 8px; color: var(--text4); }
+
+/* ════ SCREEN 2 — CALENDARIO ════ */
+.s2-body { padding: 24px 28px; }
+.s2-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.s2-month { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; }
+.s2-nav { display: flex; gap: 6px; }
+.s2-nav button {
+  background: var(--bg2); border: 0.5px solid var(--border);
+  border-radius: var(--radius); color: var(--text3);
+  padding: 6px 14px; font-family: 'DM Sans', sans-serif;
+  font-size: 11px; cursor: pointer; transition: all 0.15s;
+}
+.s2-nav button:hover { border-color: var(--border2); color: var(--text2); }
+
+.cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 1px; background: var(--border); border-radius: var(--radius2); overflow: hidden; }
+.cal-dh { background: var(--bg); padding: 8px 0; text-align: center; font-family: 'Space Mono', monospace; font-size: 8px; color: var(--text4); letter-spacing: 0.1em; }
+.cal-cell { background: var(--bg2); min-height: 88px; padding: 9px 10px; }
+.cal-cell.other { background: var(--bg); opacity: 0.4; }
+.cal-cell.today-c { background: #0e1022; }
+.cal-num { font-size: 10px; color: var(--text4); margin-bottom: 5px; font-family: 'Space Mono', monospace; }
+.cal-cell.today-c .cal-num { color: var(--accent); font-weight: 700; }
+.cal-ev { font-size: 9px; padding: 3px 6px; border-radius: 3px; margin-bottom: 3px; line-height: 1.4; cursor: pointer; }
+.cal-ev.pmo { background: var(--pmo2); color: var(--pmo); border-left: 2px solid var(--pmo); }
+.cal-ev.saas { background: var(--saas2); color: var(--saas); border-left: 2px solid var(--saas); }
+.cal-ev.brand { background: var(--brand2); color: var(--brand); border-left: 2px solid var(--brand); }
+.cal-ev.empre { background: var(--empre2); color: var(--empre); border-left: 2px solid var(--empre); }
+.ev-time { font-family: 'Space Mono', monospace; font-size: 7px; opacity: 0.6; }
+
+/* ════ SCREEN 3 — RENDIMIENTO ════ */
+.s3-body { padding: 24px 28px; }
+.s3-note {
+  font-size: 12px; color: var(--text3); margin-bottom: 22px; line-height: 1.6;
+  padding: 12px 16px; background: var(--bg2);
+  border: 0.5px solid var(--border); border-radius: var(--radius);
+  border-left: 2px solid rgba(10,102,194,0.4);
+}
+.s3-note strong { color: var(--text2); font-weight: 500; }
+.perf-table { width: 100%; border-collapse: collapse; }
+.perf-table th {
+  font-family: 'Space Mono', monospace; font-size: 8px; color: var(--text4);
+  letter-spacing: 0.14em; text-transform: uppercase;
+  padding: 0 10px 12px 0; text-align: left; font-weight: 400; white-space: nowrap;
+}
+.perf-table td { padding: 12px 10px 12px 0; border-top: 0.5px solid var(--border); vertical-align: middle; }
+.perf-info { display: flex; flex-direction: column; gap: 2px; }
+.perf-date { font-family: 'Space Mono', monospace; font-size: 8px; color: var(--text4); }
+.perf-prev { font-size: 11px; color: var(--text3); display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.perf-inp {
+  width: 58px; background: var(--bg2); border: 0.5px solid var(--border);
+  border-radius: 5px; color: var(--text2); font-family: 'Space Mono', monospace;
+  font-size: 11px; padding: 5px 7px; outline: none; text-align: center; transition: border-color 0.15s;
+}
+.perf-inp:focus { border-color: rgba(10,102,194,0.5); }
+.perf-inp.filled { color: var(--text); border-color: var(--border2); }
+.perf-score { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; }
+.score-hi { color: var(--saas); }
+.score-mid { color: var(--empre); }
+.score-lo { color: var(--text4); }
+.save-btn {
+  margin-top: 18px; padding: 10px 24px;
+  background: var(--bg2); border: 0.5px solid var(--border);
+  border-radius: var(--radius); color: var(--text3); font-size: 11px;
+  font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.15s;
+}
+.save-btn:hover { background: var(--accent2); border-color: rgba(10,102,194,0.4); color: var(--pmo); }
+
+/* ════ SCREEN 4 — HISTORIAL ════ */
+.s4-body { padding: 24px 28px; }
+.s4-filters { display: flex; gap: 6px; margin-bottom: 22px; flex-wrap: wrap; }
+.f-btn {
+  font-size: 10px; padding: 4px 12px; background: var(--bg2);
+  border: 0.5px solid var(--border); border-radius: 100px;
+  color: var(--text3); cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s;
+}
+.f-btn.active { background: var(--accent2); border-color: rgba(10,102,194,0.4); color: var(--pmo); }
+.f-btn:hover:not(.active) { border-color: var(--border2); color: var(--text2); }
+
+.hist-list { display: flex; flex-direction: column; }
+.hist-item {
+  display: grid; grid-template-columns: 70px 1fr 70px 70px 70px 100px;
+  gap: 14px; align-items: center; padding: 14px 0;
+  border-bottom: 0.5px solid var(--border);
+}
+.hist-item:last-child { border-bottom: none; }
+.hi-date { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--text4); line-height: 1.7; }
+.hi-date strong { display: block; font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; color: rgba(255,255,255,0.15); line-height: 1; margin-bottom: 2px; }
+.hi-content {}
+.hi-preview { font-size: 12px; color: var(--text3); display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 4px; }
+.hi-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+.hi-tag { font-size: 9px; color: rgba(10,102,194,0.5); }
+.hi-metric { text-align: center; }
+.hi-mval { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; color: rgba(255,255,255,0.4); }
+.hi-mlbl { font-size: 8px; color: var(--text4); margin-top: 1px; letter-spacing: 0.06em; }
+.hi-metric.filled .hi-mval { color: var(--text); }
+.hi-metric.empty .hi-mval { font-size: 11px; color: var(--text4); }
+.hi-status { text-align: right; }
+.hi-badge { font-size: 9px; padding: 3px 9px; border-radius: 100px; }
+.hb-pub { background: var(--green2); color: var(--green); border: 0.5px solid rgba(29,158,117,0.2); }
+.hb-pend { background: var(--orange2); color: var(--orange); border: 0.5px solid rgba(239,159,39,0.2); }
+.hi-link { font-size: 9px; color: rgba(10,102,194,0.4); display: block; margin-top: 3px; cursor: pointer; }
+.hi-link:hover { color: var(--pmo); }
+
+/* ════ GOOGLE AUTH OVERLAY ════ */
+.auth-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(8,8,16,0.95); backdrop-filter: blur(10px);
+  z-index: 200; align-items: center; justify-content: center;
+}
+.auth-overlay.show { display: flex; }
+.auth-box {
+  background: var(--bg2); border: 0.5px solid var(--border2);
+  border-radius: 16px; padding: 32px; max-width: 380px; width: 90%; text-align: center;
+}
+.auth-icon { font-size: 36px; margin-bottom: 16px; }
+.auth-title { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+.auth-sub { font-size: 12px; color: var(--text3); line-height: 1.6; margin-bottom: 24px; }
+.auth-btn {
+  width: 100%; padding: 12px; background: var(--accent); color: #fff;
+  border: none; border-radius: var(--radius); font-size: 13px; font-weight: 600;
+  font-family: 'Syne', sans-serif; cursor: pointer; transition: background 0.15s;
+}
+.auth-btn:hover { background: #0958a8; }
+
+/* ════ TOAST ════ */
+.toast {
+  position: fixed; bottom: 24px; right: 24px;
+  background: var(--bg2); border: 0.5px solid var(--border2);
+  border-radius: var(--radius); padding: 12px 18px;
+  font-size: 12px; color: var(--text2); z-index: 300;
+  transform: translateY(80px); opacity: 0;
+  transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+  display: flex; align-items: center; gap: 8px;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.ok { border-color: rgba(29,158,117,0.3); }
+.toast.ok::before { content: '✓'; color: var(--green); }
+.toast.err::before { content: '✗'; color: var(--red); }
+
+/* ════ LOADING SPINNER ════ */
+.spinner {
+  width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.2);
+  border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ════ EMPTY STATE ════ */
+.empty-state { text-align: center; padding: 48px 32px; }
+.es-icon { font-size: 28px; margin-bottom: 12px; opacity: 0.3; }
+.es-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600; color: var(--text3); margin-bottom: 5px; }
+.es-sub { font-size: 11px; color: var(--text4); line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<!-- ════ HEADER ════ -->
+<div class="header">
+  <div class="brand">
+    <div class="brand-icon">Li</div>
+    <span class="brand-name">Content Manager</span>
+  </div>
+  <div class="header-center">
+    <div class="h-tab active" onclick="showScreen(0,this)">Aprobación</div>
+    <div class="h-tab" onclick="showScreen(1,this)">Calendario</div>
+    <div class="h-tab" onclick="showScreen(2,this)">Rendimiento</div>
+    <div class="h-tab" onclick="showScreen(3,this)">Historial</div>
+  </div>
+  <div class="header-right">
+    <span class="h-date" id="h-week">SEMANA — · —</span>
+    <span class="h-pill h-pill-ok" id="h-approved">0 aprobados</span>
+    <span class="h-pill h-pill-pend" id="h-pending">0 pendientes</span>
+  </div>
+</div>
+
+<!-- ════ SCREEN 1 — APROBACIÓN ════ -->
+<div class="screen active" id="s0">
+  <div style="display:flex;">
+
+    <!-- Main -->
+    <div class="s1-main" style="flex:1; min-width:0;">
+
+      <div class="greeting">
+        <div class="greeting-glow"></div>
+        <div class="g-eye">Tu asistente de contenido</div>
+        <div class="g-title" id="g-title">Hola, Italo 👋<br><span>¿Qué planificamos</span> esta semana?</div>
+        <div class="g-sub" id="g-sub">Llena el brief del sidebar, envíalo y yo genero el contenido. Solo aparecen aquí las semanas con brief enviado.</div>
+        <div class="g-stats">
+          <div class="g-stat"><div class="g-val" id="gs-pend" style="color:var(--orange);">0</div><div class="g-lbl">por aprobar</div></div>
+          <div class="g-stat"><div class="g-val" id="gs-ok" style="color:var(--green);">0</div><div class="g-lbl">aprobados</div></div>
+          <div class="g-stat"><div class="g-val" id="gs-next">—</div><div class="g-lbl">próxima publicación</div></div>
+          <div class="g-stat"><div class="g-val" id="gs-cat">—</div><div class="g-lbl">categoría principal</div></div>
+        </div>
+      </div>
+
+      <div class="posts-wrap">
+        <div class="posts-label" id="posts-label">Cargando posts...</div>
+        <div id="posts-list">
+          <div class="empty-state">
+            <div class="es-icon">📝</div>
+            <div class="es-title">Sin posts esta semana</div>
+            <div class="es-sub">Envía un brief desde el sidebar para que yo genere el contenido de esta semana.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detail panel -->
+    <div class="detail-panel" id="detail-panel">
+      <div class="dp-inner">
+        <div class="dp-header">
+          <div class="dp-header-left">
+            <div class="dp-week">SEMANA 23</div>
+            <div class="dp-day" id="dp-day">Selecciona un post</div>
+          </div>
+          <button class="dp-close" onclick="closePanel()">✕</button>
+        </div>
+        <div class="dp-body">
+
+          <div>
+            <div class="dp-label">Categoría</div>
+            <div class="cat-sel" id="dp-cats">
+              <button class="cat-opt" onclick="selCat(this,'PMO')">PMO</button>
+              <button class="cat-opt" onclick="selCat(this,'SaaS')">SaaS</button>
+              <button class="cat-opt" onclick="selCat(this,'Personal brand')">Personal brand</button>
+              <button class="cat-opt" onclick="selCat(this,'Emprendimiento')">Emprendimiento</button>
+            </div>
+          </div>
+
+          <div>
+            <div class="dp-label">Texto del post</div>
+            <textarea class="dp-textarea" id="dp-text" placeholder="El texto del post aparecerá aquí..."></textarea>
+          </div>
+
+          <div>
+            <div class="dp-label">Hashtags</div>
+            <div class="tags-wrap" id="dp-tags"></div>
+          </div>
+
+          <div>
+            <div class="dp-label">Fecha y hora de publicación</div>
+            <div class="dt-row">
+              <div class="dt-f">
+                <label class="dt-lbl">Fecha</label>
+                <input class="dt-input" type="date" id="dp-date">
+              </div>
+              <div class="dt-f">
+                <label class="dt-lbl">Hora</label>
+                <input class="dt-input" type="time" id="dp-time">
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="dp-label">Imagen <span style="font-size:8px;color:var(--text4);letter-spacing:0.06em;">· OPCIONAL</span></div>
+            <div class="img-drop" id="dp-img-drop">
+              <input type="file" accept="image/*" onchange="handleImgUpload(this)">
+              <div class="id-icon">
+                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              </div>
+              <div>
+                <div class="id-main">Arrastra o <span>selecciona imagen</span></div>
+                <div class="id-sub">JPG, PNG · máx 5MB · recomendado 1200×627px</div>
+              </div>
+            </div>
+            <div class="img-preview" id="dp-img-preview">
+              <img id="dp-img-src" src="" alt="preview">
+              <div class="img-preview-bar">
+                <span class="ipb-name" id="dp-img-name">imagen.jpg</span>
+                <div class="ipb-btns">
+                  <button class="ipb-btn" onclick="changeImg()">Cambiar</button>
+                  <button class="ipb-btn del" onclick="removeImg()">Quitar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="copy-tip">
+            <div class="ct-text"><strong>Día de publicación</strong> — abre el evento en Calendar, entra aquí y copia el texto listo para pegar en LinkedIn.</div>
+            <button class="btn-copy" id="btn-copy" onclick="copyText()">Copiar</button>
+          </div>
+
+          <div class="dp-actions">
+            <button class="btn-approve-full" id="btn-approve" onclick="approvePost()">
+              Aprobar → Google Calendar
+            </button>
+            <div class="dp-sec">
+              <button class="btn-dp-soft" onclick="saveChanges()">Guardar cambios</button>
+              <button class="btn-dp-reject" onclick="rejectPost()">Rechazar</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar brief -->
+    <div class="s1-sidebar" style="width:280px; border-left:0.5px solid var(--border); flex-shrink:0;">
+
+      <div>
+        <div class="sb-title">Brief semanal</div>
+        <div class="sb-sub">Define el tema de cada semana. Las semanas sin tema no generarán contenido.</div>
+      </div>
+
+      <div class="config-block">
+        <div>
+          <label class="cfg-lbl">Semanas a planificar</label>
+          <div class="btn-grp" id="weeks-grp">
+            <button class="bg-b sel" onclick="setWeeks(1,this)">1 sem</button>
+            <button class="bg-b" onclick="setWeeks(2,this)">2 sem</button>
+            <button class="bg-b" onclick="setWeeks(3,this)">3 sem</button>
+          </div>
+        </div>
+        <div>
+          <label class="cfg-lbl">Posts por semana</label>
+          <div class="btn-grp" id="posts-grp">
+            <button class="bg-b" onclick="selBtnGrp(this)">3</button>
+            <button class="bg-b sel" onclick="selBtnGrp(this)">4</button>
+            <button class="bg-b" onclick="selBtnGrp(this)">5</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="week-blocks" id="week-blocks">
+
+        <!-- Semana 1 -->
+        <div class="wb open" id="wb1">
+          <div class="wb-head" onclick="toggleWb('wb1')">
+            <div class="wb-left">
+              <div class="wb-num" id="wb1-num">SEMANA —</div>
+              <div class="wb-range" id="wb1-range">—</div>
+            </div>
+            <div class="wb-right">
+              <div class="wb-dot" id="dot1"></div>
+              <span class="wb-chev">▼</span>
+            </div>
+          </div>
+          <div class="wb-body">
+            <div>
+              <label class="wbl">¿De qué quieres hablar?</label>
+              <textarea class="wb-ta" id="tema1" placeholder="Ej: quiero hablar sobre el cierre de Q2 y cómo mantuve 57 proyectos on-track..." oninput="updateDot('dot1','wb1',this.value)"></textarea>
+            </div>
+            <div>
+              <label class="wbl">Contexto especial (opcional)</label>
+              <input class="wb-input" type="text" id="ctx1" placeholder="Ej: presenté resultados a gerencia...">
+            </div>
+            <div class="wb-divider"></div>
+            <div>
+              <label class="wbl">Tono</label>
+              <div class="tone-pills" id="tone1">
+                <span class="tone-pill" onclick="selTone(this,'tone1')">Reflexivo</span>
+                <span class="tone-pill" onclick="selTone(this,'tone1')">Directo</span>
+                <span class="tone-pill" onclick="selTone(this,'tone1')">Inspiracional</span>
+                <span class="tone-pill" onclick="selTone(this,'tone1')">Técnico</span>
+                <span class="tone-pill" onclick="selTone(this,'tone1')">Narrativo</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Semana 2 -->
+        <div class="wb disabled" id="wb2">
+          <div class="wb-head" onclick="toggleWb('wb2')">
+            <div class="wb-left">
+              <div class="wb-num" id="wb2-num">SEMANA —</div>
+              <div class="wb-range" id="wb2-range">—</div>
+            </div>
+            <div class="wb-right">
+              <div class="wb-dot" id="dot2"></div>
+              <span class="wb-chev">▼</span>
+            </div>
+          </div>
+          <div class="wb-body">
+            <div>
+              <label class="wbl">¿De qué quieres hablar?</label>
+              <textarea class="wb-ta" id="tema2" placeholder="Deja vacío si no quieres generar contenido esta semana..." oninput="updateDot('dot2','wb2',this.value)"></textarea>
+            </div>
+            <div>
+              <label class="wbl">Contexto especial (opcional)</label>
+              <input class="wb-input" type="text" id="ctx2" placeholder="Ej: inicio de vacaciones...">
+            </div>
+            <div class="wb-divider"></div>
+            <div>
+              <label class="wbl">Tono</label>
+              <div class="tone-pills" id="tone2">
+                <span class="tone-pill" onclick="selTone(this,'tone2')">Reflexivo</span>
+                <span class="tone-pill" onclick="selTone(this,'tone2')">Directo</span>
+                <span class="tone-pill" onclick="selTone(this,'tone2')">Inspiracional</span>
+                <span class="tone-pill" onclick="selTone(this,'tone2')">Técnico</span>
+                <span class="tone-pill" onclick="selTone(this,'tone2')">Narrativo</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Semana 3 -->
+        <div class="wb disabled" id="wb3">
+          <div class="wb-head" onclick="toggleWb('wb3')">
+            <div class="wb-left">
+              <div class="wb-num" id="wb3-num">SEMANA —</div>
+              <div class="wb-range" id="wb3-range">—</div>
+            </div>
+            <div class="wb-right">
+              <div class="wb-dot" id="dot3"></div>
+              <span class="wb-chev">▼</span>
+            </div>
+          </div>
+          <div class="wb-body">
+            <div>
+              <label class="wbl">¿De qué quieres hablar?</label>
+              <textarea class="wb-ta" id="tema3" placeholder="Deja vacío si no quieres generar contenido esta semana..." oninput="updateDot('dot3','wb3',this.value)"></textarea>
+            </div>
+            <div>
+              <label class="wbl">Contexto especial (opcional)</label>
+              <input class="wb-input" type="text" id="ctx3" placeholder="Ej: regreso de vacaciones...">
+            </div>
+            <div class="wb-divider"></div>
+            <div>
+              <label class="wbl">Tono</label>
+              <div class="tone-pills" id="tone3">
+                <span class="tone-pill" onclick="selTone(this,'tone3')">Reflexivo</span>
+                <span class="tone-pill" onclick="selTone(this,'tone3')">Directo</span>
+                <span class="tone-pill" onclick="selTone(this,'tone3')">Inspiracional</span>
+                <span class="tone-pill" onclick="selTone(this,'tone3')">Técnico</span>
+                <span class="tone-pill" onclick="selTone(this,'tone3')">Narrativo</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <button class="brief-btn" id="brief-btn" onclick="sendBrief()">
+        Generar contenido →
+      </button>
+      <div class="brief-note">Solo se generará contenido para las semanas con tema. Las semanas vacías quedan sin posts.</div>
+
+      <!-- Mini calendar -->
+      <div>
+        <div class="dp-label">Esta semana</div>
+        <div class="mini-cal-grid">
+          <div class="mc-h">L</div><div class="mc-h">M</div><div class="mc-h">X</div><div class="mc-h">J</div><div class="mc-h">V</div>
+          <div class="mc-d has" id="mc-0">—<div class="mc-dot"></div></div>
+          <div class="mc-d" id="mc-1">—</div>
+          <div class="mc-d" id="mc-2">—</div>
+          <div class="mc-d today" id="mc-3">—</div>
+          <div class="mc-d" id="mc-4">—</div>
+        </div>
+      </div>
+
+      <!-- Top hashtags -->
+      <div>
+        <div class="dp-label">Top hashtags</div>
+        <div id="tag-stats">
+          <div class="es-sub">Sin datos aún.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- ════ SCREEN 2 — CALENDARIO ════ -->
+<div class="screen" id="s1">
+  <div class="s2-body">
+    <div class="s2-head">
+      <div class="s2-month" id="cal-month">Junio 2025</div>
+      <div class="s2-nav">
+        <button onclick="changeMonth(-1)">← anterior</button>
+        <button onclick="changeMonth(1)">siguiente →</button>
+      </div>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+  </div>
+</div>
+
+
+<!-- ════ SCREEN 3 — RENDIMIENTO ════ -->
+<div class="screen" id="s2">
+  <div class="s3-body">
+    <div class="s3-note">
+      <strong>Ingreso manual de métricas.</strong> Cada domingo, después de revisar tu LinkedIn, registra los resultados de la semana anterior. Con el tiempo esto identifica qué contenido conecta mejor con tu audiencia.
+    </div>
+    <table class="perf-table">
+      <thead>
+        <tr>
+          <th style="width:200px;">Post</th>
+          <th>Categoría</th>
+          <th style="text-align:center;">Likes</th>
+          <th style="text-align:center;">Comentarios</th>
+          <th style="text-align:center;">Compartidos</th>
+          <th style="text-align:center;">Score</th>
+        </tr>
+      </thead>
+      <tbody id="perf-tbody">
+        <tr><td colspan="6" style="padding:32px 0; text-align:center; color:var(--text4); font-size:12px;">Sin posts publicados aún.</td></tr>
+      </tbody>
+    </table>
+    <button class="save-btn" onclick="saveMetrics()">Guardar métricas →</button>
+  </div>
+</div>
+
+
+<!-- ════ SCREEN 4 — HISTORIAL ════ -->
+<div class="screen" id="s3">
+  <div class="s4-body">
+    <div class="s4-filters" id="hist-filters">
+      <button class="f-btn active" onclick="filterHist('all',this)">Todos</button>
+      <button class="f-btn" onclick="filterHist('PMO',this)">PMO</button>
+      <button class="f-btn" onclick="filterHist('SaaS',this)">SaaS</button>
+      <button class="f-btn" onclick="filterHist('Personal brand',this)">Personal brand</button>
+      <button class="f-btn" onclick="filterHist('Emprendimiento',this)">Emprendimiento</button>
+    </div>
+    <div class="hist-list" id="hist-list">
+      <div class="empty-state">
+        <div class="es-icon">🗂️</div>
+        <div class="es-title">Sin historial aún</div>
+        <div class="es-sub">Aquí aparecerán todos los posts aprobados y publicados.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════ GOOGLE AUTH OVERLAY ════ -->
+<div class="auth-overlay" id="auth-overlay">
+  <div class="auth-box">
+    <div class="auth-icon">📅</div>
+    <div class="auth-title">Conectar Google Calendar</div>
+    <div class="auth-sub">Para agendar posts automáticamente necesitas autorizar el acceso a tu Google Calendar. Solo se hace una vez.</div>
+    <button class="auth-btn" onclick="initGoogleAuth()">Conectar con Google →</button>
+  </div>
+</div>
+
+<!-- ════ TOAST ════ -->
+<div class="toast" id="toast"></div>
+
+
+<script>
+// ─── CONFIG ───
+const GOOGLE_CLIENT_ID = '188587882620-7gvtngmqfbnd7m3pfprq8lj3cfglijc2.apps.googleusercontent.com'; // Reemplaza con tu Client ID
+const ANTHROPIC_PROXY = ''; // Se usará Cloud Function — dejar vacío por ahora
+
+// ─── STATE ───
+let posts = [];
+let currentPostId = null;
+let currentImg = null;
+let calYear, calMonth;
+let gapiInited = false;
+let gisInited = false;
+let tokenClient;
+const today = new Date();
+calYear = today.getFullYear();
+calMonth = today.getMonth();
+
+// ─── HELPERS ───
+function showToast(msg, type='ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast show ${type}`;
+  setTimeout(() => t.className = 'toast', 3000);
+}
+
+function showScreen(idx, tab) {
+  document.querySelectorAll('.screen').forEach((s,i) => s.classList.toggle('active', i===idx));
+  document.querySelectorAll('.h-tab').forEach((t,i) => t.classList.toggle('active', i===idx));
+  if (idx===1) renderCal();
+  if (idx===2) renderPerf();
+  if (idx===3) renderHist();
+}
+
+function getWeekNum(d) {
+  const jan1 = new Date(d.getFullYear(),0,1);
+  return Math.ceil(((d-jan1)/86400000 + jan1.getDay()+1)/7);
+}
+
+function getWeekRange(offset=0) {
+  const d = new Date(today);
+  d.setDate(d.getDate() - d.getDay() + 1 + offset*7);
+  const start = new Date(d);
+  const end = new Date(d); end.setDate(end.getDate()+4);
+  const fmt = (dt) => dt.toLocaleDateString('es-PE',{day:'numeric',month:'short'});
+  return { start, end, label: `${fmt(start)} – ${fmt(end)}`, weekNum: getWeekNum(start) };
+}
+
+function catClass(cat) {
+  return { 'PMO':'pmo','SaaS':'saas','Personal brand':'brand','Emprendimiento':'empre' }[cat] || 'pmo';
+}
+
+// ─── INIT WEEK LABELS ───
+function initWeekLabels() {
+  for (let i=1; i<=3; i++) {
+    const w = getWeekRange(i-1);
+    document.getElementById(`wb${i}-num`).textContent = `SEMANA ${w.weekNum}`;
+    document.getElementById(`wb${i}-range`).textContent = w.label;
+  }
+  // Mini cal days
+  const monday = new Date(today);
+  monday.setDate(monday.getDate() - monday.getDay() + 1);
+  for (let i=0; i<5; i++) {
+    const d = new Date(monday); d.setDate(d.getDate()+i);
+    const el = document.getElementById(`mc-${i}`);
+    if (el) {
+      const inner = el.querySelector('.mc-dot');
+      el.childNodes[0].textContent = d.getDate();
+      if (d.toDateString()===today.toDateString()) el.classList.add('today');
+    }
+  }
+  // Header week
+  const w = getWeekRange(0);
+  document.getElementById('h-week').textContent = `SEMANA ${w.weekNum} · ${w.label.toUpperCase()}`;
+}
+
+// ─── FIREBASE LISTENERS ───
+window.addEventListener('firebase-ready', () => {
+  initWeekLabels();
+  loadPosts();
+});
+
+async function loadPosts() {
+  try {
+    const { collection, query, orderBy, onSnapshot } = window._firebase;
+    const db = window._db;
+    const q = query(collection(db,'posts'), orderBy('scheduledDate','asc'));
+    onSnapshot(q, (snap) => {
+      posts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderPosts();
+      updateHeader();
+    });
+  } catch(e) {
+    console.error('Error cargando posts:', e);
+    document.getElementById('posts-label').textContent = 'Error cargando posts';
+  }
+}
+
+// ─── RENDER POSTS ───
+function renderPosts() {
+  const list = document.getElementById('posts-list');
+  const pending = posts.filter(p => p.status==='pending');
+  const approved = posts.filter(p => p.status==='approved');
+  const all = [...pending, ...approved];
+
+  document.getElementById('posts-label').textContent =
+    `Esta semana · ${all.length} publicaciones`;
+
+  if (!all.length) {
+    list.innerHTML = `<div class="empty-state">
+      <div class="es-icon">📝</div>
+      <div class="es-title">Sin posts esta semana</div>
+      <div class="es-sub">Envía un brief desde el sidebar para que yo genere el contenido.</div>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = all.map(p => {
+    const d = p.scheduledDate?.toDate ? p.scheduledDate.toDate() : new Date(p.scheduledDate);
+    const dayNum = d.getDate();
+    const dayName = d.toLocaleDateString('es-PE',{weekday:'short'}).toUpperCase();
+    const timeStr = d.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
+    const cc = catClass(p.category);
+    const isOk = p.status==='approved';
+    const tags = (p.hashtags||[]).slice(0,3).map(t=>`<span class="pr-tag">${t}</span>`).join('');
+    return `<div class="post-row ${currentPostId===p.id?'active-row':''}" onclick="openPost('${p.id}', this)">
+      <div class="pr-date ${!isOk?'':''}">
+        <strong>${dayNum}</strong>${dayName}<br>${timeStr}
+      </div>
+      <div class="pr-body">
+        <div class="pr-top"><span class="cat-pill cp-${cc}">${p.category}</span></div>
+        <div class="pr-preview">${p.text?.substring(0,120)}...</div>
+        <div class="pr-tags">${tags}</div>
+      </div>
+      <div class="pr-right">
+        <div class="status-dot ${isOk?'sd-ok':'sd-pend'}"></div>
+        ${p.imageUrl?`<img class="pr-thumb" src="${p.imageUrl}" alt="">`:'' }
+        <span class="pr-chev">›</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  updateStats(pending.length, approved.length, all);
+}
+
+function updateStats(pend, ok, all) {
+  document.getElementById('gs-pend').textContent = pend;
+  document.getElementById('gs-ok').textContent = ok;
+  const next = all.find(p=>p.status==='pending');
+  if (next) {
+    const d = next.scheduledDate?.toDate ? next.scheduledDate.toDate() : new Date(next.scheduledDate);
+    document.getElementById('gs-next').textContent = d.toLocaleDateString('es-PE',{weekday:'short'});
+  }
+  const cats = all.map(p=>p.category);
+  const freq = cats.reduce((a,c)=>{a[c]=(a[c]||0)+1;return a},{});
+  const top = Object.entries(freq).sort((a,b)=>b[1]-a[1])[0];
+  if (top) document.getElementById('gs-cat').textContent = top[0];
+}
+
+function updateHeader() {
+  const pend = posts.filter(p=>p.status==='pending').length;
+  const ok = posts.filter(p=>p.status==='approved').length;
+  document.getElementById('h-approved').textContent = `${ok} aprobados`;
+  document.getElementById('h-pending').textContent = `${pend} pendientes`;
+}
+
+// ─── OPEN POST DETAIL ───
+function openPost(id, rowEl) {
+  currentPostId = id;
+  const p = posts.find(x=>x.id===id);
+  if (!p) return;
+
+  document.querySelectorAll('.post-row').forEach(r=>r.classList.remove('active-row'));
+  rowEl.classList.add('active-row');
+
+  const d = p.scheduledDate?.toDate ? p.scheduledDate.toDate() : new Date(p.scheduledDate);
+  document.getElementById('dp-day').textContent =
+    d.toLocaleDateString('es-PE',{weekday:'long',day:'numeric',month:'long'}) + ' · ' +
+    d.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('dp-text').value = p.text || '';
+  document.getElementById('dp-date').value = d.toISOString().split('T')[0];
+  document.getElementById('dp-time').value = d.toTimeString().substring(0,5);
+
+  // Cats
+  const cc = catClass(p.category);
+  document.querySelectorAll('.cat-opt').forEach(b => {
+    b.className = 'cat-opt';
+    if (b.textContent===p.category) b.classList.add(`sel-${cc}`);
+  });
+
+  // Tags
+  renderTags(p.hashtags||[]);
+
+  // Image
+  if (p.imageUrl) {
+    document.getElementById('dp-img-drop').style.display = 'none';
+    document.getElementById('dp-img-preview').style.display = 'block';
+    document.getElementById('dp-img-src').src = p.imageUrl;
+    document.getElementById('dp-img-name').textContent = 'imagen del post';
+  } else {
+    document.getElementById('dp-img-drop').style.display = 'flex';
+    document.getElementById('dp-img-preview').style.display = 'none';
+  }
+
+  currentImg = p.imageUrl || null;
+  document.getElementById('detail-panel').classList.add('open');
+}
+
+function closePanel() {
+  document.getElementById('detail-panel').classList.remove('open');
+  currentPostId = null;
+  document.querySelectorAll('.post-row').forEach(r=>r.classList.remove('active-row'));
+}
+
+function renderTags(tags) {
+  const wrap = document.getElementById('dp-tags');
+  wrap.innerHTML = tags.map(t=>
+    `<span class="tag-chip">${t} <span class="tag-x" onclick="removeTag('${t}')">×</span></span>`
+  ).join('') + `<span class="tag-add" onclick="addTag()">+ agregar</span>`;
+}
+
+function removeTag(tag) {
+  const p = posts.find(x=>x.id===currentPostId);
+  if (!p) return;
+  p.hashtags = (p.hashtags||[]).filter(t=>t!==tag);
+  renderTags(p.hashtags);
+}
+
+function addTag() {
+  const t = prompt('Nuevo hashtag (sin #):');
+  if (!t) return;
+  const p = posts.find(x=>x.id===currentPostId);
+  if (!p) return;
+  p.hashtags = [...(p.hashtags||[]), `#${t.replace('#','')}`];
+  renderTags(p.hashtags);
+}
+
+function selCat(btn, cat) {
+  document.querySelectorAll('.cat-opt').forEach(b=>b.className='cat-opt');
+  btn.classList.add(`sel-${catClass(cat)}`);
+}
+
+// ─── IMAGE HANDLING ───
+function handleImgUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 5*1024*1024) { showToast('Imagen demasiado grande (máx 5MB)','err'); return; }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    currentImg = e.target.result;
+    document.getElementById('dp-img-drop').style.display = 'none';
+    document.getElementById('dp-img-preview').style.display = 'block';
+    document.getElementById('dp-img-src').src = currentImg;
+    document.getElementById('dp-img-name').textContent = file.name;
+  };
+  reader.readAsDataURL(file);
+}
+
+function changeImg() {
+  document.getElementById('dp-img-drop').style.display = 'flex';
+  document.getElementById('dp-img-preview').style.display = 'none';
+  currentImg = null;
+}
+
+function removeImg() {
+  document.getElementById('dp-img-drop').style.display = 'flex';
+  document.getElementById('dp-img-preview').style.display = 'none';
+  currentImg = null;
+}
+
+// ─── COPY TEXT ───
+function copyText() {
+  const text = document.getElementById('dp-text').value;
+  const p = posts.find(x=>x.id===currentPostId);
+  const tags = (p?.hashtags||[]).join(' ');
+  navigator.clipboard.writeText(`${text}\n\n${tags}`).then(() => {
+    const btn = document.getElementById('btn-copy');
+    btn.textContent = '✓ Copiado';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copiar'; btn.classList.remove('copied'); }, 2500);
+  });
+}
+
+// ─── SAVE CHANGES ───
+async function saveChanges() {
+  if (!currentPostId) return;
+  const { updateDoc, doc } = window._firebase;
+  const db = window._db;
+  const p = posts.find(x=>x.id===currentPostId);
+  if (!p) return;
+  try {
+    const dateVal = document.getElementById('dp-date').value;
+    const timeVal = document.getElementById('dp-time').value;
+    const scheduled = new Date(`${dateVal}T${timeVal}`);
+    await updateDoc(doc(db,'posts',currentPostId), {
+      text: document.getElementById('dp-text').value,
+      hashtags: p.hashtags,
+      scheduledDate: scheduled,
+      imageUrl: currentImg || p.imageUrl || null
+    });
+    showToast('Cambios guardados correctamente');
+  } catch(e) {
+    showToast('Error guardando cambios','err');
+  }
+}
+
+// ─── APPROVE POST ───
+async function approvePost() {
+  if (!currentPostId) return;
+  const btn = document.getElementById('btn-approve');
+  btn.classList.add('loading');
+  btn.innerHTML = '<div class="spinner"></div> Agendando...';
+
+  try {
+    await saveChanges();
+    const { updateDoc, doc } = window._firebase;
+    const db = window._db;
+    await updateDoc(doc(db,'posts',currentPostId), { status: 'approved' });
+
+    // Google Calendar
+    const p = posts.find(x=>x.id===currentPostId);
+    const d = new Date(document.getElementById('dp-date').value + 'T' + document.getElementById('dp-time').value);
+    await createCalendarEvent(p, d);
+
+    showToast('✓ Post aprobado y agendado en Google Calendar');
+    closePanel();
+  } catch(e) {
+    showToast('Error al aprobar: ' + e.message, 'err');
+  } finally {
+    btn.classList.remove('loading');
+    btn.innerHTML = 'Aprobar → Google Calendar';
+  }
+}
+
+// ─── REJECT POST ───
+async function rejectPost() {
+  if (!currentPostId || !confirm('¿Rechazar este post?')) return;
+  const { updateDoc, doc } = window._firebase;
+  const db = window._db;
+  await updateDoc(doc(db,'posts',currentPostId), { status: 'rejected' });
+  showToast('Post rechazado');
+  closePanel();
+}
+
+// ─── GOOGLE CALENDAR ───
+function loadGoogleAPIs() {
+  const s1 = document.createElement('script');
+  s1.src = 'https://apis.google.com/js/api.js';
+  s1.onload = () => gapi.load('client', async () => {
+    await gapi.client.init({ discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'] });
+    gapiInited = true;
+  });
+  document.head.appendChild(s1);
+
+  const s2 = document.createElement('script');
+  s2.src = 'https://accounts.google.com/gsi/client';
+  s2.onload = () => {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: 'https://www.googleapis.com/auth/calendar.events',
+      callback: '',
+    });
+    gisInited = true;
+  };
+  document.head.appendChild(s2);
+}
+
+async function createCalendarEvent(post, date) {
+  return new Promise((resolve, reject) => {
+    if (!gapiInited || !gisInited) { resolve(); return; }
+    tokenClient.callback = async (resp) => {
+      if (resp.error) { reject(new Error(resp.error)); return; }
+      try {
+        const end = new Date(date); end.setMinutes(end.getMinutes()+30);
+        const tags = (post.hashtags||[]).join(' ');
+        const event = {
+          summary: `📢 LinkedIn: ${post.category} · ${post.text?.substring(0,50)}...`,
+          description: `${post.text}\n\n${tags}\n\n🔗 Editar post: ${window.location.href}`,
+          start: { dateTime: date.toISOString(), timeZone: 'America/Lima' },
+          end: { dateTime: end.toISOString(), timeZone: 'America/Lima' },
+          reminders: { useDefault: false, overrides: [{ method:'popup', minutes:15 }] }
+        };
+        await gapi.client.calendar.events.insert({ calendarId:'primary', resource: event });
+        resolve();
+      } catch(e) { reject(e); }
+    };
+    if (gapi.client.getToken()===null) {
+      tokenClient.requestAccessToken({ prompt:'consent' });
+    } else {
+      tokenClient.requestAccessToken({ prompt:'' });
+    }
+  });
+}
+
+function initGoogleAuth() {
+  document.getElementById('auth-overlay').classList.remove('show');
+  if (gapiInited && gisInited) approvePost();
+}
+
+// ─── BRIEF & CONTENT GENERATION ───
+async function sendBrief() {
+  const btn = document.getElementById('brief-btn');
+  const semanas = [];
+  for (let i=1; i<=3; i++) {
+    const tema = document.getElementById(`tema${i}`)?.value?.trim();
+    const ctx = document.getElementById(`ctx${i}`)?.value?.trim();
+    const wb = document.getElementById(`wb${i}`);
+    if (wb.classList.contains('disabled') || !tema) continue;
+    const tono = document.querySelector(`#tone${i} .tone-pill.sel`)?.textContent || 'Reflexivo';
+    const wRange = getWeekRange(i-1);
+    semanas.push({ tema, ctx, tono, weekStart: wRange.start, weekNum: wRange.weekNum });
+  }
+
+  if (!semanas.length) { showToast('Escribe al menos un tema para generar contenido','err'); return; }
+
+  const postsPerWeek = parseInt(document.querySelector('#posts-grp .bg-b.sel')?.textContent || '4');
+
+  btn.classList.add('loading');
+  btn.innerHTML = '<div class="spinner"></div> Generando...';
+
+  try {
+    for (const sem of semanas) {
+      await generatePostsForWeek(sem, postsPerWeek);
+    }
+    showToast(`✓ Contenido generado para ${semanas.length} semana(s)`);
+  } catch(e) {
+    showToast('Error generando contenido: ' + e.message, 'err');
+  } finally {
+    btn.classList.remove('loading');
+    btn.innerHTML = 'Generar contenido →';
+  }
+}
+
+async function generatePostsForWeek(sem, count) {
+  const { addDoc, collection } = window._firebase;
+  const db = window._db;
+
+  const prompt = `Eres el asistente de contenido de LinkedIn de Italo Amaya, PMO Manager en Claro Perú y fundador de eControl (SaaS).
+
+Genera ${count} posts para LinkedIn en español. Semana ${sem.weekNum}.
+
+Tema: ${sem.tema}
+${sem.ctx ? `Contexto: ${sem.ctx}` : ''}
+Tono: ${sem.tono}
+
+Responde SOLO con un JSON array sin markdown, sin explicaciones:
+[
+  {
+    "text": "texto completo del post con saltos de línea reales, máximo 1300 caracteres",
+    "hashtags": ["#hashtag1","#hashtag2","#hashtag3","#hashtag4","#hashtag5"],
+    "category": "PMO|SaaS|Personal brand|Emprendimiento",
+    "dayOffset": 0
+  }
+]
+
+dayOffset: 0=lunes, 2=miércoles, 4=viernes (distribuye los ${count} posts en la semana).
+Horas sugeridas: lunes 8am, miércoles 12pm, viernes 7:30am, martes 9am, jueves 12pm.
+El texto debe ser auténtico, personal, con ganchos fuertes. Usa → para listas. Sin emojis excesivos.`;
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4000,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+
+  const data = await res.json();
+  const raw = data.content?.map(c=>c.text||'').join('');
+  const clean = raw.replace(/```json|```/g,'').trim();
+  const generatedPosts = JSON.parse(clean);
+
+  const hours = [8,12,7.5,9,12];
+  const daysOfWeek = [0,2,4,1,3];
+
+  for (let i=0; i<generatedPosts.length; i++) {
+    const gp = generatedPosts[i];
+    const scheduled = new Date(sem.weekStart);
+    scheduled.setDate(scheduled.getDate() + (gp.dayOffset ?? daysOfWeek[i]));
+    const h = [8,12,7,9,12][i]; const m = i===2?30:0;
+    scheduled.setHours(h, m, 0, 0);
+
+    await addDoc(collection(db,'posts'), {
+      text: gp.text,
+      hashtags: gp.hashtags,
+      category: gp.category,
+      scheduledDate: scheduled,
+      weekNum: sem.weekNum,
+      status: 'pending',
+      imageUrl: null,
+      createdAt: new Date(),
+      likes: null, comments: null, shares: null
+    });
+  }
+}
+
+// ─── CALENDARIO ───
+function renderCal() {
+  const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  document.getElementById('cal-month').textContent = `${months[calMonth]} ${calYear}`;
+  const grid = document.getElementById('cal-grid');
+  const days = ['LUN','MAR','MIÉ','JUE','VIE','SÁB','DOM'];
+  let html = days.map(d=>`<div class="cal-dh">${d}</div>`).join('');
+
+  const firstDay = new Date(calYear, calMonth, 1);
+  let startDow = firstDay.getDay(); if (startDow===0) startDow=7;
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  const prevDays = new Date(calYear, calMonth, 0).getDate();
+
+  for (let i=startDow-1; i>0; i--) {
+    html += `<div class="cal-cell other"><div class="cal-num">${prevDays-i+1}</div></div>`;
+  }
+  for (let d=1; d<=daysInMonth; d++) {
+    const isToday = d===today.getDate() && calMonth===today.getMonth() && calYear===today.getFullYear();
+    const cellDate = new Date(calYear, calMonth, d);
+    const dayPosts = posts.filter(p => {
+      const pd = p.scheduledDate?.toDate ? p.scheduledDate.toDate() : new Date(p.scheduledDate);
+      return pd.getDate()===d && pd.getMonth()===calMonth && pd.getFullYear()===calYear;
+    });
+    const eventsHtml = dayPosts.map(p => {
+      const pd = p.scheduledDate?.toDate ? p.scheduledDate.toDate() : new Date(p.scheduledDate);
+      const t = pd.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
+      const cc = catClass(p.category);
+      return `<div class="cal-ev ${cc}"><div class="ev-time">${t}</div>${p.category}</div>`;
+    }).join('');
+    html += `<div class="cal-cell${isToday?' today-c':''}"><div class="cal-num">${d}</div>${eventsHtml}</div>`;
+  }
+  const remaining = 42 - (startDow-1) - daysInMonth;
+  for (let d=1; d<=remaining; d++) html += `<div class="cal-cell other"><div class="cal-num">${d}</div></div>`;
+  grid.innerHTML = html;
+}
+
+function changeMonth(dir) {
+  calMonth += dir;
+  if (calMonth>11) { calMonth=0; calYear++; }
+  if (calMonth<0) { calMonth=11; calYear--; }
+  renderCal();
+}
+
+// ─── RENDIMIENTO ───
+function renderPerf() {
+  const published = posts.filter(p=>p.status==='approved');
+  if (!published.length) return;
+  const tbody = document.getElementById('perf-tbody');
+  tbody.innerHTML = published.map(p => {
+    const d = p.scheduledDate?.toDate ? p.scheduledDate.toDate() : new Date(p.scheduledDate);
+    const cc = catClass(p.category);
+    const score = p.likes>50?'Alto':p.likes>20?'Medio':'—';
+    const scoreClass = p.likes>50?'score-hi':p.likes>20?'score-mid':'score-lo';
+    return `<tr>
+      <td>
+        <div class="perf-info">
+          <span class="perf-date">${d.toLocaleDateString('es-PE',{weekday:'short',day:'numeric',month:'short'}).toUpperCase()}</span>
+          <span class="perf-prev">${p.text?.substring(0,80)}...</span>
+        </div>
+      </td>
+      <td><span class="cat-pill cp-${cc}">${p.category}</span></td>
+      <td style="text-align:center;"><input class="perf-inp${p.likes?` filled`:''}" data-id="${p.id}" data-field="likes" value="${p.likes||''}" type="number" placeholder="—"></td>
+      <td style="text-align:center;"><input class="perf-inp${p.comments?` filled`:''}" data-id="${p.id}" data-field="comments" value="${p.comments||''}" type="number" placeholder="—"></td>
+      <td style="text-align:center;"><input class="perf-inp${p.shares?` filled`:''}" data-id="${p.id}" data-field="shares" value="${p.shares||''}" type="number" placeholder="—"></td>
+      <td style="text-align:center;"><div class="perf-score ${scoreClass}">${score}</div></td>
+    </tr>`;
+  }).join('');
+}
+
+async function saveMetrics() {
+  const { updateDoc, doc } = window._firebase;
+  const db = window._db;
+  const inputs = document.querySelectorAll('.perf-inp');
+  for (const inp of inputs) {
+    const id = inp.dataset.id;
+    const field = inp.dataset.field;
+    const val = parseInt(inp.value) || null;
+    if (val !== null) {
+      await updateDoc(doc(db,'posts',id), { [field]: val });
+    }
+  }
+  showToast('Métricas guardadas correctamente');
+}
+
+// ─── HISTORIAL ───
+let histFilter = 'all';
+function renderHist() {
+  const filtered = histFilter==='all' ? posts : posts.filter(p=>p.category===histFilter);
+  const list = document.getElementById('hist-list');
+  if (!filtered.length) {
+    list.innerHTML = `<div class="empty-state"><div class="es-icon">🗂️</div><div class="es-title">Sin posts en esta categoría</div></div>`;
+    return;
+  }
+  list.innerHTML = filtered.map(p => {
+    const d = p.scheduledDate?.toDate ? p.scheduledDate.toDate() : new Date(p.scheduledDate);
+    const cc = catClass(p.category);
+    const tags = (p.hashtags||[]).slice(0,3).map(t=>`<span class="hi-tag">${t}</span>`).join('');
+    const isOk = p.status==='approved';
+    return `<div class="hist-item">
+      <div class="hi-date"><strong>${d.getDate()}</strong>${d.toLocaleDateString('es-PE',{month:'short'}).toUpperCase()} · ${d.toLocaleDateString('es-PE',{weekday:'short'}).toUpperCase()}</div>
+      <div class="hi-content">
+        <div class="hi-preview">${p.text?.substring(0,100)}...</div>
+        <div class="hi-tags">${tags}<span style="margin-left:6px;"><span class="cat-pill cp-${cc}" style="font-size:9px;">${p.category}</span></span></div>
+      </div>
+      <div class="hi-metric ${p.likes?'filled':'empty'}"><div class="hi-mval">${p.likes||'—'}</div><div class="hi-mlbl">likes</div></div>
+      <div class="hi-metric ${p.comments?'filled':'empty'}"><div class="hi-mval">${p.comments||'—'}</div><div class="hi-mlbl">coment.</div></div>
+      <div class="hi-metric ${p.shares?'filled':'empty'}"><div class="hi-mval">${p.shares||'—'}</div><div class="hi-mlbl">comp.</div></div>
+      <div class="hi-status">
+        <span class="hi-badge ${isOk?'hb-pub':'hb-pend'}">${isOk?'Aprobado':'Pendiente'}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterHist(cat, btn) {
+  histFilter = cat;
+  document.querySelectorAll('.f-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderHist();
+}
+
+// ─── BRIEF UI ───
+function setWeeks(n, btn) {
+  document.querySelectorAll('#weeks-grp .bg-b').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');
+  for (let i=2; i<=3; i++) {
+    const wb = document.getElementById(`wb${i}`);
+    if (i<=n) wb.classList.remove('disabled'); else { wb.classList.add('disabled'); wb.classList.remove('open'); }
+  }
+}
+
+function selBtnGrp(btn) {
+  btn.closest('.btn-grp').querySelectorAll('.bg-b').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');
+}
+
+function toggleWb(id) {
+  const wb = document.getElementById(id);
+  if (wb.classList.contains('disabled')) return;
+  wb.classList.toggle('open');
+}
+
+function updateDot(dotId, wbId, val) {
+  const dot = document.getElementById(dotId);
+  const wb = document.getElementById(wbId);
+  if (val.trim()) { dot.style.background='var(--accent)'; dot.style.boxShadow='0 0 5px rgba(10,102,194,0.6)'; wb.classList.add('has-content'); }
+  else { dot.style.background=''; dot.style.boxShadow=''; wb.classList.remove('has-content'); }
+}
+
+function selTone(pill, groupId) {
+  document.querySelectorAll(`#${groupId} .tone-pill`).forEach(p=>p.classList.remove('sel'));
+  pill.classList.add('sel');
+}
+
+// ─── INIT ───
+loadGoogleAPIs();
+</script>
+</body>
+</html>

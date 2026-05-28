@@ -1003,8 +1003,7 @@ body {
 <script>
 // ─── CONFIG ───
 const GOOGLE_CLIENT_ID = '188587882620-7gvtngmqfbnd7m3pfprq8lj3cfglijc2.apps.googleusercontent.com'; // Reemplaza con tu Client ID
-const ANTHROPIC_PROXY = 'https://api.github.com/repos/italoamayamoreno-lgtm/linkedin-cms/dispatches';
-const CMS_TOKEN = 'ghp_zgt0cFlcwQ8YOTLzQJp3RnQVY1Nh9Hp';
+const ANTHROPIC_PROXY = 'https://linkedin-cms-proxy.italoamaya-moreno.workers.dev'; // Se usará Cloud Function — dejar vacío por ahora
 
 // ─── STATE ───
 let posts = [];
@@ -1410,55 +1409,6 @@ async function sendBrief() {
     if (wb.classList.contains('disabled') || !tema) continue;
     const tono = document.querySelector(`#tone${i} .tone-pill.sel`)?.textContent || 'Reflexivo';
     const wRange = getWeekRange(i-1);
-    semanas.push({ tema, ctx, tono, weekStart: wRange.start.toISOString(), weekNum: wRange.weekNum });
-  }
-
-  if (!semanas.length) { showToast('Escribe al menos un tema para generar contenido','err'); return; }
-
-  const postsPerWeek = parseInt(document.querySelector('#posts-grp .bg-b.sel')?.textContent || '4');
-
-  btn.classList.add('loading');
-  btn.innerHTML = '<div class="spinner"></div> Generando...';
-
-  try {
-    const response = await fetch(ANTHROPIC_PROXY, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${CMS_TOKEN}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        event_type: 'generate-posts',
-        client_payload: {
-          semanas: semanas,
-          postsPerWeek: postsPerWeek,
-          firebaseProject: 'linkedin-cms-italo'
-        }
-      })
-    });
-
-    if (response.status === 204) {
-      showToast('✓ Brief enviado — los posts aparecerán en 1-2 minutos');
-    } else {
-      throw new Error(`Error ${response.status}`);
-    }
-  } catch(e) {
-    showToast('Error enviando brief: ' + e.message, 'err');
-  } finally {
-    btn.classList.remove('loading');
-    btn.innerHTML = 'Generar contenido →';
-  }
-}
-  const btn = document.getElementById('brief-btn');
-  const semanas = [];
-  for (let i=1; i<=3; i++) {
-    const tema = document.getElementById(`tema${i}`)?.value?.trim();
-    const ctx = document.getElementById(`ctx${i}`)?.value?.trim();
-    const wb = document.getElementById(`wb${i}`);
-    if (wb.classList.contains('disabled') || !tema) continue;
-    const tono = document.querySelector(`#tone${i} .tone-pill.sel`)?.textContent || 'Reflexivo';
-    const wRange = getWeekRange(i-1);
     semanas.push({ tema, ctx, tono, weekStart: wRange.start, weekNum: wRange.weekNum });
   }
 
@@ -1508,7 +1458,7 @@ dayOffset: 0=lunes, 2=miércoles, 4=viernes (distribuye los ${count} posts en la
 Horas sugeridas: lunes 8am, miércoles 12pm, viernes 7:30am, martes 9am, jueves 12pm.
 El texto debe ser auténtico, personal, con ganchos fuertes. Usa → para listas. Sin emojis excesivos.`;
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch(ANTHROPIC_PROXY, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

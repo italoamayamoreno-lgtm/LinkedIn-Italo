@@ -1410,6 +1410,55 @@ async function sendBrief() {
     if (wb.classList.contains('disabled') || !tema) continue;
     const tono = document.querySelector(`#tone${i} .tone-pill.sel`)?.textContent || 'Reflexivo';
     const wRange = getWeekRange(i-1);
+    semanas.push({ tema, ctx, tono, weekStart: wRange.start.toISOString(), weekNum: wRange.weekNum });
+  }
+
+  if (!semanas.length) { showToast('Escribe al menos un tema para generar contenido','err'); return; }
+
+  const postsPerWeek = parseInt(document.querySelector('#posts-grp .bg-b.sel')?.textContent || '4');
+
+  btn.classList.add('loading');
+  btn.innerHTML = '<div class="spinner"></div> Generando...';
+
+  try {
+    const response = await fetch(ANTHROPIC_PROXY, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${CMS_TOKEN}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        event_type: 'generate-posts',
+        client_payload: {
+          semanas: semanas,
+          postsPerWeek: postsPerWeek,
+          firebaseProject: 'linkedin-cms-italo'
+        }
+      })
+    });
+
+    if (response.status === 204) {
+      showToast('✓ Brief enviado — los posts aparecerán en 1-2 minutos');
+    } else {
+      throw new Error(`Error ${response.status}`);
+    }
+  } catch(e) {
+    showToast('Error enviando brief: ' + e.message, 'err');
+  } finally {
+    btn.classList.remove('loading');
+    btn.innerHTML = 'Generar contenido →';
+  }
+}
+  const btn = document.getElementById('brief-btn');
+  const semanas = [];
+  for (let i=1; i<=3; i++) {
+    const tema = document.getElementById(`tema${i}`)?.value?.trim();
+    const ctx = document.getElementById(`ctx${i}`)?.value?.trim();
+    const wb = document.getElementById(`wb${i}`);
+    if (wb.classList.contains('disabled') || !tema) continue;
+    const tono = document.querySelector(`#tone${i} .tone-pill.sel`)?.textContent || 'Reflexivo';
+    const wRange = getWeekRange(i-1);
     semanas.push({ tema, ctx, tono, weekStart: wRange.start, weekNum: wRange.weekNum });
   }
 

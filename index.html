@@ -1469,9 +1469,19 @@ El texto debe ser auténtico, personal, con ganchos fuertes. Usa → para listas
   });
 
   const data = await res.json();
-  const raw = data.content?.map(c=>c.text||'').join('');
-  const clean = raw.replace(/```json|```/g,'').trim();
-  const generatedPosts = JSON.parse(clean);
+
+  // Debug — ver respuesta completa en consola
+  console.log('Respuesta Worker:', JSON.stringify(data));
+
+  if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+
+  const raw = data.content?.map(c => c.type === 'text' ? c.text : '').join('') || '';
+  if (!raw) throw new Error('Respuesta vacía del modelo');
+
+  const jsonMatch = raw.match(/\[[\s\S]*\]/);
+  if (!jsonMatch) throw new Error('No se encontró JSON en la respuesta');
+
+  const generatedPosts = JSON.parse(jsonMatch[0]);
 
   const hours = [8,12,7.5,9,12];
   const daysOfWeek = [0,2,4,1,3];

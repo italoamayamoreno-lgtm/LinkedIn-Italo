@@ -823,15 +823,6 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
           <div class="sb-sub">Genera un solo post para la fecha y hora que elijas.</div>
           <div class="nf-section">
             <div>
-              <label class="cfg-lbl">Categoría</label>
-              <div class="cat-btn-grp" id="nf-cats">
-                <button class="cat-bgb" onclick="selNfCat(this,'PMO','pmo')">PMO</button>
-                <button class="cat-bgb" onclick="selNfCat(this,'SaaS','saas')">SaaS</button>
-                <button class="cat-bgb" onclick="selNfCat(this,'Personal brand','brand')">Personal brand</button>
-                <button class="cat-bgb" onclick="selNfCat(this,'Emprendimiento','empre')">Emprendimiento</button>
-              </div>
-            </div>
-            <div>
               <label class="cfg-lbl">Fecha y hora de publicación</label>
               <div class="dt-row-nf">
                 <input class="nf-inp" type="date" id="nf-date">
@@ -1451,7 +1442,6 @@ async function generateSinglePost() {
 
   if(!tema){showToast('Escribe el tema del post','err');return;}
   if(!fecha){showToast('Selecciona la fecha','err');return;}
-  if(!nfCatSelected){showToast('Selecciona la categoría','err');return;}
 
   const btn=document.getElementById('nf-btn');
   btn.classList.add('loading'); btn.innerHTML='<div class="spinner"></div> Generando...';
@@ -1464,10 +1454,11 @@ Genera 1 post para LinkedIn en español.
 Tema: ${tema}
 ${ctx?`Contexto: ${ctx}`:''}
 Tono: ${tono}
-Categoría sugerida: ${nfCatSelected}
+
+Determina la categoría más adecuada según el contenido del post. Las categorías posibles son: PMO, SaaS, Personal brand, Emprendimiento. Si el tema no encaja exactamente en ninguna, elige la más cercana o usa "Personal brand".
 
 Responde SOLO con JSON sin markdown:
-{"text":"texto completo con saltos de línea reales, máximo 1300 caracteres","hashtags":["#h1","#h2","#h3","#h4","#h5"],"category":"${nfCatSelected}"}
+{"text":"texto completo con saltos de línea reales, máximo 1300 caracteres","hashtags":["#h1","#h2","#h3","#h4","#h5"],"category":"PMO|SaaS|Personal brand|Emprendimiento"}
 
 El texto debe ser auténtico, con gancho fuerte en la primera línea. Usa → para listas.`;
 
@@ -1488,9 +1479,7 @@ El texto debe ser auténtico, con gancho fuerte en la primera línea. Usa → pa
     // Reset form
     document.getElementById('nf-tema').value='';
     document.getElementById('nf-ctx').value='';
-    document.querySelectorAll('#nf-cats .cat-bgb').forEach(b=>b.className='cat-bgb');
     document.querySelectorAll('#nf-tones .tone-pill').forEach(p=>p.classList.remove('sel'));
-    nfCatSelected=null;
     switchMode('plan');
   } catch(e){showToast('Error: '+e.message,'err');}
   finally{btn.classList.remove('loading');btn.innerHTML='Generar este post →';}
